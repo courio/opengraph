@@ -1,6 +1,4 @@
-import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
-
-name in ThisBuild := "opengraph"
+name := "opengraph"
 organization in ThisBuild := "org.courio"
 version in ThisBuild := "1.0.0-SNAPSHOT"
 scalaVersion in ThisBuild := "2.13.1"
@@ -27,29 +25,14 @@ developers in ThisBuild := List(
   Developer(id="darkfrog", name="Matt Hicks", email="matt@matthicks.com", url=url("http://matthicks.com"))
 )
 
-val youiVersion = "0.11.32"
+val youiVersion = "0.12.5-SNAPSHOT"
 val jSoupVersion = "1.12.1"
+val media4sVersion = "1.0.14"
 
-lazy val root = project.in(file("."))
-  .aggregate(coreJS, coreJVM)
-  .settings(
-    publish := {},
-    publishLocal := {}
-  )
+fork := true
 
-lazy val core = crossProject(JSPlatform, JVMPlatform)
-  .crossType(CrossType.Pure)
-  .in(file("core"))
-  .settings(
-    name := "opengraph",
-    libraryDependencies ++= Seq(
-      "io.youi" %%% "youi-client" % youiVersion,
-      "org.jsoup" % "jsoup" % jSoupVersion
-    )
-  )
-  .jvmSettings(
-    fork := true
-  )
-
-lazy val coreJS = core.js
-lazy val coreJVM = core.jvm
+libraryDependencies ++= Seq(
+  "io.youi" %% "youi-client" % youiVersion,
+  "org.matthicks" %% "media4s" % media4sVersion,
+  "org.jsoup" % "jsoup" % jSoupVersion
+)
