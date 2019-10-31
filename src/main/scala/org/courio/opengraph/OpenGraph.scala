@@ -34,7 +34,7 @@ case class OpenGraph(title: String,
                      byline: Option[String],
                      `type`: Option[String],
                      favIcons: List[FavIcon],
-                     preview: Option[File])
+                     preview: Option[OpenGraphPreview])
 
 object OpenGraph {
   private val client = HttpClient
@@ -54,10 +54,7 @@ object OpenGraph {
               .toList
               .map { e =>
                 val href = e.attr("href")
-                val iconURL = URL.get(href) match {
-                  case Left(_) => url.withPath(href)
-                  case Right(u) => u
-                }
+                val iconURL = url.withPart(href)
                 val size = e.attr("sizes") match {
                   case SizeRegex(w, h) => Some(w.toInt -> h.toInt)
                   case _ => None
@@ -77,15 +74,14 @@ object OpenGraph {
               }
               .toMap
             val imageURL = properties.get("og:image").orElse(properties.get("og:image:url")).map(URL.apply)
-            scribe.info(s"Image URL: $imageURL")
-            val previewFuture: Future[Option[(File, ImageInfo)]] = imageURL match {
+            val previewFuture: Future[Option[OpenGraphPreview]] = imageURL match {
               case Some(u) => HttpClient.url(u).send().map { response =>
                 val content = response.content.getOrElse(throw new RuntimeException(s"No content returned for $u"))
                 Some(createPreview(content, config))
               }
               case None => Future.successful(None)
             }
-            previewFuture.map(_.map(_._1)).map { preview =>
+            previewFuture.map { preview =>
               Some(OpenGraph(
                 title = properties.getOrElse("og:title", parseTitle(doc.title())),
                 siteName = properties.get("og:site_name"),
@@ -112,7 +108,7 @@ object OpenGraph {
           }
           case ct if ct.`type` == "image" => {
             val title = url.path.parts.last.value
-            val (preview, imageInfo) = createPreview(content, config)
+            val preview = createPreview(content, config)
             Future.successful(Some(OpenGraph(
               title = title,
               siteName = None,
@@ -120,9 +116,9 @@ object OpenGraph {
               description = None,
               image = Some(url),
               imageSecure = None,
-              imageType = imageInfo.imageType.map(_.mimeType),
-              imageWidth = Some(imageInfo.width),
-              imageHeight = Some(imageInfo.height),
+              imageType = preview.info.imageType.map(_.mimeType),
+              imageWidth = Some(preview.info.width),
+              imageHeight = Some(preview.info.height),
               imageAlt = None,
               url = None,
               audio = None,
@@ -167,7 +163,7 @@ object OpenGraph {
     }
   }
 
-  def createPreview(content: Content, config: OpenGraphConfig): (File, ImageInfo) = {
+  def createPreview(content: Content, config: OpenGraphConfig): OpenGraphPreview = {
     val file = content match {
       case FileContent(f, _, _) => f
       case BytesContent(value, contentType, _) => {
@@ -177,7 +173,8 @@ object OpenGraph {
       }
     }
     val imageInfo = ImageUtil.info(file)
-    (createPreview(file, imageInfo, config), imageInfo)
+    val preview = createPreview(file, imageInfo, config)
+    OpenGraphPreview(preview, imageInfo)
   }
 
   def createPreview(file: File, imageInfo: ImageInfo, config: OpenGraphConfig): File = {
@@ -188,13 +185,17 @@ object OpenGraph {
   }
 
   def main(args: Array[String]): Unit = {
-    val future = apply(url"https://techcrunch.com/2019/10/13/ban-facebook-campaign-ads/?utm_medium=TCnewsletter&tpcc=TCdailynewsletter")
+    val config = OpenGraphConfig(previewMaxWidth = 600, previewMaxHeight = 400)
+    val future = apply(url"https://techcrunch.com/2019/10/13/ban-facebook-campaign-ads/?utm_medium=TCnewsletter&tpcc=TCdailynewsletter", config)
 //    val future = apply(url"https://www.nytimes.com/2016/08/28/opinion/sunday/even-roger-federer-gets-old.html?ref=oembed")
 //    val future = apply(url"https://www.outr.com")
 //    val future = apply(url"https://courio.com/images/desktop.png")
     val og = Await.result(future, Duration.Inf)
     scribe.info(s"OG: $og")
-    scribe.info(s"Preview: ${og.foreach(_.preview.foreach(_.getAbsolutePath))}")
+    og.foreach(_.preview.foreach { p =>
+      scribe.info(s"Path: ${p.file.getAbsolutePath}")
+      scribe.info(s"Image: ${p.info}")
+    })
     System.exit(0)
   }
 }
