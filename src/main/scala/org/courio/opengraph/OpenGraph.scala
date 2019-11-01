@@ -6,6 +6,7 @@ import io.youi.client.HttpClient
 import io.youi.http.content.{BytesContent, Content, FileContent}
 import io.youi.net._
 import io.youi.stream.IO
+import io.youi.util.SizeUtility
 import org.jsoup.Jsoup
 import org.matthicks.media4s.image.{ImageInfo, ImageUtil}
 
@@ -73,7 +74,7 @@ object OpenGraph {
                 e.attr("property") -> e.attr("content")
               }
               .toMap
-            val imageURL = properties.get("og:image").orElse(properties.get("og:image:url")).map(URL.apply)
+            val imageURL = properties.get("og:image").orElse(properties.get("og:image:url")).map(_.trim).filterNot(_.isEmpty).map(URL.apply)
             val previewFuture: Future[Option[OpenGraphPreview]] = imageURL match {
               case Some(u) => HttpClient.url(u).send().map { response =>
                 val content = response.content.getOrElse(throw new RuntimeException(s"No content returned for $u"))
@@ -174,13 +175,14 @@ object OpenGraph {
     }
     val imageInfo = ImageUtil.info(file)
     val preview = createPreview(file, imageInfo, config)
-    OpenGraphPreview(preview, imageInfo)
+    OpenGraphPreview(preview, ImageUtil.info(preview))
   }
 
   def createPreview(file: File, imageInfo: ImageInfo, config: OpenGraphConfig): File = {
     val extension = imageInfo.imageType.map(_.extension).getOrElse(throw new RuntimeException(s"No image-type for ${file.getAbsolutePath} - $imageInfo"))
     val temp = File.createTempFile("preview", s".$extension", config.directory)
-    ImageUtil.generateResized(file, temp, width = Some(config.previewMaxWidth), height = Some(config.previewMaxHeight))
+    val s = SizeUtility.scale(imageInfo.width, imageInfo.height, config.previewMaxWidth, config.previewMaxHeight, scaleUp = false)
+    ImageUtil.generateResized(file, temp, width = Some(s.width.toInt), height = Some(s.height.toInt))
     temp
   }
 

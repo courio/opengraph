@@ -33,6 +33,7 @@ fork := true
 
 libraryDependencies ++= Seq(
   "io.youi" %% "youi-client" % youiVersion,
+  "io.youi" %% "youi-spatial" % youiVersion,
   "org.matthicks" %% "media4s" % media4sVersion,
   "org.jsoup" % "jsoup" % jSoupVersion
 )
