@@ -8,7 +8,9 @@ import io.youi.net._
 import io.youi.stream.IO
 import io.youi.util.SizeUtility
 import org.jsoup.Jsoup
-import org.matthicks.media4s.image.{ImageInfo, ImageUtil}
+import org.matthicks.media4s.image.{ImageInfo, ImageType, ImageUtil}
+import org.matthicks.media4s.video.VideoUtil
+import org.matthicks.media4s.video.transcode.FFMPEGTranscoder
 
 import scala.jdk.CollectionConverters._
 import scala.concurrent.{Await, Future}
@@ -173,17 +175,35 @@ object OpenGraph {
         temp
       }
     }
-    val imageInfo = ImageUtil.info(file)
-    val preview = createPreview(file, imageInfo, config)
+    val preview = createPreview(file, config)
     OpenGraphPreview(preview, ImageUtil.info(preview))
   }
 
-  def createPreview(file: File, imageInfo: ImageInfo, config: OpenGraphConfig): File = {
-    val extension = imageInfo.imageType.map(_.extension).getOrElse(throw new RuntimeException(s"No image-type for ${file.getAbsolutePath} - $imageInfo"))
-    val temp = File.createTempFile("preview", s".$extension", config.directory)
-    val s = SizeUtility.scale(imageInfo.width, imageInfo.height, config.previewMaxWidth, config.previewMaxHeight, scaleUp = false)
-    ImageUtil.generateResized(file, temp, width = Some(s.width.toInt), height = Some(s.height.toInt))
-    temp
+  def createPreview(file: File, config: OpenGraphConfig): File = {
+    val contentType = ContentType.byFileName(file.getName)
+    scribe.info(s"Create Preview: ${file.getName}, Content-Type: $contentType")
+    if (contentType.`type` == "video") {
+      val temp = File.createTempFile("preview", ".png", config.directory)
+      val videoInfo = VideoUtil.info(file)
+      FFMPEGTranscoder()
+        .input(file)
+        .screenGrab(videoInfo.duration / 2.0)
+        .output(temp)
+        .execute(None)
+      temp
+    } else {
+      val imageInfo = ImageUtil.info(file)
+      val `type` = imageInfo.imageType.getOrElse(throw new RuntimeException(s"No image-type for ${file.getAbsolutePath} - $imageInfo"))
+      val extension = `type`.extension
+      val temp = File.createTempFile("preview", s".$extension", config.directory)
+      val s = SizeUtility.scale(imageInfo.width, imageInfo.height, config.previewMaxWidth, config.previewMaxHeight, scaleUp = false)
+      if (`type` == ImageType.GIF) {
+        ImageUtil.generateGIFCropped(file, temp, s.width.toInt, s.height.toInt)
+      } else {
+        ImageUtil.generateResized(file, temp, width = Some(s.width.toInt), height = Some(s.height.toInt))
+      }
+      temp
+    }
   }
 
   def main(args: Array[String]): Unit = {
