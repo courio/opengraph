@@ -17,6 +17,7 @@ import scala.concurrent.{Await, Future}
 import scribe.Execution.global
 
 import scala.concurrent.duration.Duration
+import scala.util.Try
 
 case class OpenGraph(title: String,
                      siteName: Option[String],
@@ -93,12 +94,12 @@ object OpenGraph {
                 image = imageURL,
                 imageSecure = properties.get("og:image:secure_url").map(URL.apply),
                 imageType = properties.get("og:image:type"),
-                imageWidth = properties.get("og:image:width").map(_.toInt),
-                imageHeight = properties.get("og:image:height").map(_.toInt),
+                imageWidth = Try(properties.get("og:image:width").map(_.toInt)).getOrElse(None),
+                imageHeight = Try(properties.get("og:image:height").map(_.toInt)).getOrElse(None),
                 imageAlt = properties.get("og:image:alt"),
-                url = properties.get("og:url").map(URL.apply),
-                audio = properties.get("og:audio").map(URL.apply),
-                video = properties.get("og:video").map(URL.apply),
+                url = properties.get("og:url").map(URL.get).map(_.getOrElse(None)),
+                audio = properties.get("og:audio").map(URL.get).map(_.getOrElse(None)),
+                video = properties.get("og:video").map(URL.get).map(_.getOrElse(None)),
                 determiner = properties.get("og:determiner"),
                 locale = properties.get("og:locale"),
                 localeAlternate = properties.get("og:locale:alternate"),
