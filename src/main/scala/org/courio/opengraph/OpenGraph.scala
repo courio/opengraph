@@ -81,7 +81,7 @@ object OpenGraph {
             val previewFuture: Future[Option[OpenGraphPreview]] = imageURL match {
               case Some(u) => HttpClient.url(u).send().map { response =>
                 val content = response.content.getOrElse(throw new RuntimeException(s"No content returned for $u"))
-                Some(createPreview(content, config))
+                Some(createPreview(u.path.parts.last.value, content, config))
               }
               case None => Future.successful(None)
             }
@@ -97,9 +97,9 @@ object OpenGraph {
                 imageWidth = Try(properties.get("og:image:width").map(_.toInt)).getOrElse(None),
                 imageHeight = Try(properties.get("og:image:height").map(_.toInt)).getOrElse(None),
                 imageAlt = properties.get("og:image:alt"),
-                url = properties.get("og:url").map(URL.get).map(_.getOrElse(None)),
-                audio = properties.get("og:audio").map(URL.get).map(_.getOrElse(None)),
-                video = properties.get("og:video").map(URL.get).map(_.getOrElse(None)),
+                url = properties.get("og:url").map(URL.get).flatMap(_.toOption),
+                audio = properties.get("og:audio").map(URL.get).flatMap(_.toOption),
+                video = properties.get("og:video").map(URL.get).flatMap(_.toOption),
                 determiner = properties.get("og:determiner"),
                 locale = properties.get("og:locale"),
                 localeAlternate = properties.get("og:locale:alternate"),
@@ -112,7 +112,7 @@ object OpenGraph {
           }
           case ct if ct.`type` == "image" => {
             val title = url.path.parts.last.value
-            val preview = createPreview(content, config)
+            val preview = createPreview(url.path.parts.last.value, content, config)
             Future.successful(Some(OpenGraph(
               title = title,
               siteName = None,
@@ -167,11 +167,15 @@ object OpenGraph {
     }
   }
 
-  def createPreview(content: Content, config: OpenGraphConfig): OpenGraphPreview = {
+  def createPreview(fileName: String, content: Content, config: OpenGraphConfig): OpenGraphPreview = {
     val file = content match {
       case FileContent(f, _, _) => f
       case BytesContent(value, contentType, _) => {
-        val temp = File.createTempFile("opengraph", s".${contentType.extension.getOrElse(throw new RuntimeException(s"No extension defined for $contentType"))}", config.directory)
+        val extension = contentType.extension match {
+          case Some(ext) => ext
+          case None => ContentType.byFileName(fileName).extension.getOrElse(s"No extension defined for $contentType or file name: $fileName.")
+        }
+        val temp = File.createTempFile("opengraph", s".$extension", config.directory)
         IO.stream(value, temp)
         temp
       }
@@ -209,10 +213,11 @@ object OpenGraph {
 
   def main(args: Array[String]): Unit = {
     val config = OpenGraphConfig(previewMaxWidth = 600, previewMaxHeight = 400)
-    val future = apply(url"https://techcrunch.com/2019/10/13/ban-facebook-campaign-ads/?utm_medium=TCnewsletter&tpcc=TCdailynewsletter", config)
+//    val future = apply(url"https://techcrunch.com/2019/10/13/ban-facebook-campaign-ads/?utm_medium=TCnewsletter&tpcc=TCdailynewsletter", config)
 //    val future = apply(url"https://www.nytimes.com/2016/08/28/opinion/sunday/even-roger-federer-gets-old.html?ref=oembed")
 //    val future = apply(url"https://www.outr.com")
 //    val future = apply(url"https://courio.com/images/desktop.png")
+    val future = apply(url"https://jobs.lever.co/ycombinator/ef091f3d-df02-433c-a6c0-7ba4a0c70fa7")
     val og = Await.result(future, Duration.Inf)
     scribe.info(s"OG: $og")
     og.foreach(_.preview.foreach { p =>
