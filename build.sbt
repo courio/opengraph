@@ -1,6 +1,6 @@
 name := "opengraph"
 organization in ThisBuild := "org.courio"
-version in ThisBuild := "1.0.2"
+version in ThisBuild := "1.0.3-SNAPSHOT"
 scalaVersion in ThisBuild := "2.13.1"
 
 resolvers in ThisBuild ++= Seq(
@@ -25,7 +25,7 @@ developers in ThisBuild := List(
   Developer(id="darkfrog", name="Matt Hicks", email="matt@matthicks.com", url=url("http://matthicks.com"))
 )
 
-val youiVersion = "0.12.9"
+val youiVersion = "0.13.0-SNAPSHOT"
 val jSoupVersion = "1.12.1"
 val media4sVersion = "1.0.14"
 

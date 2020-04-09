@@ -217,13 +217,12 @@ object OpenGraph {
 //    val future = apply(url"https://www.nytimes.com/2016/08/28/opinion/sunday/even-roger-federer-gets-old.html?ref=oembed")
 //    val future = apply(url"https://www.outr.com")
 //    val future = apply(url"https://courio.com/images/desktop.png")
-    val future = apply(url"https://jobs.lever.co/ycombinator/ef091f3d-df02-433c-a6c0-7ba4a0c70fa7")
-    val og = Await.result(future, Duration.Inf)
-    scribe.info(s"OG: $og")
-    og.foreach(_.preview.foreach { p =>
-      scribe.info(s"Path: ${p.file.getAbsolutePath}")
-      scribe.info(s"Image: ${p.info}")
-    })
+//    val future = apply(url"https://jobs.lever.co/ycombinator/ef091f3d-df02-433c-a6c0-7ba4a0c70fa7")
+    val future = apply(url"http://darkfrog.courio.com/?stream=%2BdeBk29bfsrTfvG8AVr3YrTpAVon1EL65&public=true")
+    val ogOption = Await.result(future, Duration.Inf)
+    ogOption.foreach { og =>
+      scribe.info(s"FavIcon: ${og.favIcons}")
+    }
     System.exit(0)
   }
 }
