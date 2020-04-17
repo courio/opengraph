@@ -3,6 +3,7 @@ package org.courio.opengraph
 import java.io.File
 
 import io.youi.client.HttpClient
+import io.youi.http.HttpStatus
 import io.youi.http.content.{BytesContent, Content, FileContent}
 import io.youi.net._
 import io.youi.stream.IO
@@ -80,8 +81,13 @@ object OpenGraph {
             val imageURL = properties.get("og:image").orElse(properties.get("og:image:url")).map(_.trim).filterNot(_.isEmpty).map(URL.apply)
             val previewFuture: Future[Option[OpenGraphPreview]] = imageURL match {
               case Some(u) => HttpClient.url(u).send().map { response =>
-                val content = response.content.getOrElse(throw new RuntimeException(s"No content returned for $u"))
-                Some(createPreview(u.path.parts.last.value, content, config))
+                if (response.status == HttpStatus.OK) {
+                  val content = response.content.getOrElse(throw new RuntimeException(s"No content returned for $u"))
+                  Some(createPreview(u.path.parts.last.value, content, config))
+                } else {
+                  scribe.warn(s"Bad status (${response.status}) received when trying to retrieve $u for $url")
+                  None
+                }
               }
               case None => Future.successful(None)
             }
