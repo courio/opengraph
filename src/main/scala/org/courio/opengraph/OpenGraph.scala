@@ -116,7 +116,7 @@ object OpenGraph {
               ))
             }
           }
-          case ct if ct.`type` == "image" => {
+          case ct if ct.`type` == "image" || ct.`type` == "video" => {
             val title = url.path.parts.last.value
             val preview = createPreview(url.path.parts.last.value, content, config)
             Future.successful(Some(OpenGraph(
