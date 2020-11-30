@@ -201,7 +201,7 @@ object OpenGraph {
         .screenGrab(videoInfo.duration / 2.0)
         .output(temp)
         .execute(None)
-      temp
+      createPreview(temp, config)
     } else {
       val imageInfo = ImageUtil.info(file)
       val `type` = imageInfo.imageType.getOrElse(throw new RuntimeException(s"No image-type for ${file.getAbsolutePath} - $imageInfo"))
