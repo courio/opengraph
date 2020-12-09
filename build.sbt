@@ -1,6 +1,6 @@
 name := "opengraph"
 organization in ThisBuild := "org.courio"
-version in ThisBuild := "1.0.8-SNAPSHOT"
+version in ThisBuild := "1.0.8"
 scalaVersion in ThisBuild := "2.13.4"
 
 resolvers in ThisBuild ++= Seq(
