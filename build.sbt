@@ -1,6 +1,6 @@
 name := "opengraph"
 organization in ThisBuild := "org.courio"
-version in ThisBuild := "1.0.7"
+version in ThisBuild := "1.0.8-SNAPSHOT"
 scalaVersion in ThisBuild := "2.13.4"
 
 resolvers in ThisBuild ++= Seq(
@@ -27,7 +27,7 @@ developers in ThisBuild := List(
 
 val youiVersion = "0.13.18"
 val jSoupVersion = "1.13.1"
-val media4sVersion = "1.0.16"
+val media4sVersion = "1.0.17"
 
 fork := true
 
