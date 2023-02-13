@@ -1,5 +1,5 @@
 package org.courio.opengraph
 
-import io.youi.net.URL
+import spice.net.URL
 
 case class FavIcon(url: URL, size: Option[(Int, Int)])

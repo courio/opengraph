@@ -1,21 +1,20 @@
 package org.courio.opengraph
 
-import java.io.File
+import cats.effect.IO
+import cats.effect.unsafe.implicits.global
 
-import io.youi.client.HttpClient
-import io.youi.http.HttpStatus
-import io.youi.http.content.{BytesContent, Content, FileContent}
-import io.youi.net._
-import io.youi.stream.IO
-import io.youi.util.SizeUtility
+import java.io.File
 import org.jsoup.Jsoup
-import org.matthicks.media4s.image.{ImageInfo, ImageType, ImageUtil}
+import org.matthicks.media4s.image.{ImageType, ImageUtil}
 import org.matthicks.media4s.video.VideoUtil
 import org.matthicks.media4s.video.transcode.FFMPEGTranscoder
 
 import scala.jdk.CollectionConverters._
-import scala.concurrent.{Await, Future}
-import scribe.Execution.global
+import spice.http.HttpStatus
+import spice.http.client.HttpClient
+import spice.http.content.{BytesContent, Content, FileContent}
+import spice.net._
+import spice.streamer.Streamer
 
 import scala.concurrent.duration.Duration
 import scala.util.Try
@@ -46,7 +45,7 @@ object OpenGraph {
 
   private val SizeRegex = "(\\d+)x(\\d+)".r
 
-  def apply(url: URL, config: OpenGraphConfig = OpenGraphConfig()): Future[Option[OpenGraph]] = {
+  def apply(url: URL, config: OpenGraphConfig = OpenGraphConfig()): IO[Option[OpenGraph]] = {
     client.url(url).send().flatMap { response =>
       response.content match {
         case Some(content) => content.contentType match {
@@ -78,8 +77,8 @@ object OpenGraph {
                 e.attr("property") -> e.attr("content")
               }
               .toMap
-            val imageURL = properties.get("og:image").orElse(properties.get("og:image:url")).map(_.trim).filterNot(_.isEmpty).map(URL.apply)
-            val previewFuture: Future[Option[OpenGraphPreview]] = imageURL match {
+            val imageURL = properties.get("og:image").orElse(properties.get("og:image:url")).map(_.trim).filterNot(_.isEmpty).map(URL.parse(_))
+            val previewIO: IO[Option[OpenGraphPreview]] = imageURL match {
               case Some(u) => HttpClient.url(u).send().map { response =>
                 if (response.status == HttpStatus.OK) {
                   val content = response.content.getOrElse(throw new RuntimeException(s"No content returned for $u"))
@@ -89,23 +88,23 @@ object OpenGraph {
                   None
                 }
               }
-              case None => Future.successful(None)
+              case None => IO.pure(None)
             }
-            previewFuture.map { preview =>
+            previewIO.map { preview =>
               Some(OpenGraph(
                 title = properties.getOrElse("og:title", parseTitle(doc.title())),
                 siteName = properties.get("og:site_name"),
                 site = properties.get("og:site").orElse(parseSite(doc.title())),
                 description = properties.get("og:description"),
                 image = imageURL,
-                imageSecure = properties.get("og:image:secure_url").map(URL.apply),
+                imageSecure = properties.get("og:image:secure_url").map(URL.parse(_)),
                 imageType = properties.get("og:image:type"),
                 imageWidth = Try(properties.get("og:image:width").map(_.toInt)).getOrElse(None),
                 imageHeight = Try(properties.get("og:image:height").map(_.toInt)).getOrElse(None),
                 imageAlt = properties.get("og:image:alt"),
-                url = properties.get("og:url").map(URL.get).flatMap(_.toOption),
-                audio = properties.get("og:audio").map(URL.get).flatMap(_.toOption),
-                video = properties.get("og:video").map(URL.get).flatMap(_.toOption),
+                url = properties.get("og:url").map(URL.get(_)).flatMap(_.toOption),
+                audio = properties.get("og:audio").map(URL.get(_)).flatMap(_.toOption),
+                video = properties.get("og:video").map(URL.get(_)).flatMap(_.toOption),
                 determiner = properties.get("og:determiner"),
                 locale = properties.get("og:locale"),
                 localeAlternate = properties.get("og:locale:alternate"),
@@ -119,7 +118,7 @@ object OpenGraph {
           case ct if ct.`type` == "image" || ct.`type` == "video" => {
             val title = url.path.parts.last.value
             val preview = createPreview(url.path.parts.last.value, content, config)
-            Future.successful(Some(OpenGraph(
+            IO.pure(Some(OpenGraph(
               title = title,
               siteName = None,
               site = None,
@@ -144,12 +143,12 @@ object OpenGraph {
           }
           case _ => {
             scribe.warn(s"Unsupported content-type: ${content.contentType} for $url")
-            Future.successful(None)
+            IO.pure(None)
           }
         }
         case _ => {
           scribe.warn(s"No content returned for $url")
-          Future.successful(None)
+          IO.pure(None)
         }
       }
     }
@@ -182,7 +181,7 @@ object OpenGraph {
           case None => ContentType.byFileName(fileName).extension.getOrElse(s"No extension defined for $contentType or file name: $fileName.")
         }
         val temp = File.createTempFile("opengraph", s".$extension", config.directory)
-        IO.stream(value, temp)
+        Streamer(value, temp)
         temp
       }
     }
@@ -219,13 +218,13 @@ object OpenGraph {
 
   def main(args: Array[String]): Unit = {
     val config = OpenGraphConfig(previewMaxWidth = 600, previewMaxHeight = 400)
-//    val future = apply(url"https://techcrunch.com/2019/10/13/ban-facebook-campaign-ads/?utm_medium=TCnewsletter&tpcc=TCdailynewsletter", config)
-//    val future = apply(url"https://www.nytimes.com/2016/08/28/opinion/sunday/even-roger-federer-gets-old.html?ref=oembed")
-//    val future = apply(url"https://www.outr.com")
-//    val future = apply(url"https://courio.com/images/desktop.png")
-//    val future = apply(url"https://jobs.lever.co/ycombinator/ef091f3d-df02-433c-a6c0-7ba4a0c70fa7")
-    val future = apply(url"http://darkfrog.courio.com/?stream=%2BdeBk29bfsrTfvG8AVr3YrTpAVon1EL65&public=true")
-    val ogOption = Await.result(future, Duration.Inf)
+//    val io = apply(url"https://techcrunch.com/2019/10/13/ban-facebook-campaign-ads/?utm_medium=TCnewsletter&tpcc=TCdailynewsletter", config)
+//    val io = apply(url"https://www.nytimes.com/2016/08/28/opinion/sunday/even-roger-federer-gets-old.html?ref=oembed")
+//    val io = apply(url"https://www.outr.com")
+//    val io = apply(url"https://courio.com/images/desktop.png")
+//    val io = apply(url"https://jobs.lever.co/ycombinator/ef091f3d-df02-433c-a6c0-7ba4a0c70fa7")
+    val io = apply(url"http://darkfrog.courio.com/?stream=%2BdeBk29bfsrTfvG8AVr3YrTpAVon1EL65&public=true")
+    val ogOption = io.unsafeRunSync()
     ogOption.foreach { og =>
       scribe.info(s"FavIcon: ${og.favIcons}")
     }

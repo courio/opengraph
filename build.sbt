@@ -1,39 +1,38 @@
 name := "opengraph"
-organization in ThisBuild := "org.courio"
-version in ThisBuild := "1.0.8"
-scalaVersion in ThisBuild := "2.13.4"
+ThisBuild / organization := "org.courio"
+ThisBuild / version := "1.0.9"
+ThisBuild / scalaVersion := "2.13.4"
 
-resolvers in ThisBuild ++= Seq(
-  Resolver.sonatypeRepo("releases"),
-  Resolver.sonatypeRepo("snapshots")
-)
-scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation", "-feature")
+ThisBuild / resolvers ++= Seq(
+  Resolver.sonatypeOssRepos("releases"),
+  Resolver.sonatypeOssRepos("snapshots")
+).flatten
+ThisBuild / scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
 
-publishTo in ThisBuild := sonatypePublishToBundle.value
-sonatypeProfileName in ThisBuild := "org.courio"
-publishMavenStyle in ThisBuild := true
-licenses in ThisBuild := Seq("MIT" -> url("https://github.com/courio/core/blob/master/LICENSE"))
-sonatypeProjectHosting in ThisBuild := Some(xerial.sbt.Sonatype.GitHubHosting("courio", "opengraph", "contact@courio.com"))
-homepage in ThisBuild := Some(url("https://courio.com"))
-scmInfo in ThisBuild := Some(
+ThisBuild / publishTo := sonatypePublishToBundle.value
+ThisBuild / sonatypeProfileName := "org.courio"
+publishMavenStyle := true
+ThisBuild / licenses := Seq("MIT" -> url("https://github.com/courio/core/blob/master/LICENSE"))
+ThisBuild / sonatypeProjectHosting := Some(xerial.sbt.Sonatype.GitHubHosting("courio", "opengraph", "contact@courio.com"))
+ThisBuild / homepage := Some(url("https://courio.com"))
+ThisBuild / scmInfo := Some(
   ScmInfo(
     url("https://github.com/courio/opengraph"),
     "scm:git@github.com:courio/opengraph.git"
   )
 )
-developers in ThisBuild := List(
+ThisBuild / developers := List(
   Developer(id="darkfrog", name="Matt Hicks", email="matt@matthicks.com", url=url("http://matthicks.com"))
 )
 
-val youiVersion = "0.13.18"
+val spiceVersion = "0.0.16"
 val jSoupVersion = "1.13.1"
-val media4sVersion = "1.0.17"
+val media4sVersion = "1.0.18"
 
 fork := true
 
 libraryDependencies ++= Seq(
-  "io.youi" %% "youi-client" % youiVersion,
-  "io.youi" %% "youi-spatial" % youiVersion,
-  "org.matthicks" %% "media4s" % media4sVersion,
+  "com.outr" %% "spice-client-okhttp" % spiceVersion,
+  "com.outr" %% "media4s" % media4sVersion,
   "org.jsoup" % "jsoup" % jSoupVersion
 )
