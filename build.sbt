@@ -1,7 +1,7 @@
 name := "opengraph"
 ThisBuild / organization := "org.courio"
-ThisBuild / version := "1.0.9"
-ThisBuild / scalaVersion := "2.13.4"
+ThisBuild / version := "1.1.0"
+ThisBuild / scalaVersion := "2.13.11"
 
 ThisBuild / resolvers ++= Seq(
   Resolver.sonatypeOssRepos("releases"),
@@ -25,9 +25,9 @@ ThisBuild / developers := List(
   Developer(id="darkfrog", name="Matt Hicks", email="matt@matthicks.com", url=url("http://matthicks.com"))
 )
 
-val spiceVersion = "0.0.16"
-val jSoupVersion = "1.13.1"
-val media4sVersion = "1.0.18"
+val spiceVersion = "0.0.35"
+val jSoupVersion = "1.16.1"
+val media4sVersion = "1.0.19"
 
 fork := true
 
